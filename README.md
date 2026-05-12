@@ -6,16 +6,27 @@
 
 ```bash
 git clone https://github.com/wwq0327/taotie.git
+cd taotie
+chmod +x taotie.py
+ln -sf "$(pwd)/taotie.py" /usr/local/bin/taotie   # 或 ~/.local/bin/taotie
 ```
 
 Python 标准库，零依赖。
 
 ## 用法
 
+任意目录直接运行：
+
+```bash
+taotie scan
+taotie clean --dry-run
+taotie clean
+```
+
 ### 诊断
 
 ```bash
-python taotie.py scan
+taotie scan
 ```
 
 扫描用户目录和系统目录的磁盘占用，红色标记 >10G 的大户，黄色标记 >1G 的项目。
@@ -23,9 +34,9 @@ python taotie.py scan
 ### 清理
 
 ```bash
-python taotie.py clean --dry-run          # 预览 safe 级
-python taotie.py clean                     # 执行 safe 清理
-python taotie.py clean --level medium --dry-run
+taotie clean --dry-run          # 预览 safe 级
+taotie clean                     # 执行 safe 清理
+taotie clean --level medium --dry-run
 ```
 
 三个安全等级：
