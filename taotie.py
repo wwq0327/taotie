@@ -200,26 +200,74 @@ def scan_overview():
         print(f"\n  APFS 本地快照: 无")
 
 
-def scan_dir(title, path, depth=1, top_n=5):
+# 清理等级分类
+SAFE_PATHS = {
+    str(HOME / ".Trash"),
+    str(HOME / "Library/Caches"),
+    "/tmp",
+    "/private/tmp",
+}
+MEDIUM_PATHS = {
+    str(HOME / ".cache/whisper"),
+    str(HOME / ".cache/huggingface"),
+    str(HOME / "Library/Logs"),
+}
+PY_CACHE_DIRS = {"uv", "pip"}  # safe 级里的 ~/.cache/xxx 子目录
+
+
+def classify(path, parent_title):
+    """判断一个扫描条目属于哪个清理等级"""
+    p = os.path.normpath(str(path))
+    for sp in SAFE_PATHS:
+        if p.startswith(os.path.normpath(sp)):
+            return "safe"
+    for mp in MEDIUM_PATHS:
+        if p.startswith(os.path.normpath(mp)):
+            return "medium"
+    # ~/.cache 下的 uv/pip 归 safe
+    cache_dir = str(HOME / ".cache")
+    if p.startswith(cache_dir):
+        sub = os.path.relpath(p, cache_dir).split("/")[0]
+        if sub in PY_CACHE_DIRS:
+            return "safe"
+        return "medium"
+    return "manual"
+
+
+def scan_dir_table(title, path, depth=1, top_n=5):
+    """打印一个目录的扫描结果（表格形式），返回 (条目列表, 总大小)"""
     if not os.path.exists(str(path)):
-        return
+        return [], 0
     total = du_total(path)
     if total == 0:
-        return
+        return [], 0
     print_header(f"{title}  ({fmt_size(total)})")
     items = du_sort(path, depth, top_n)
+    if not items:
+        return [], total
+    # 表头
+    level_len = 8
+    print(f"  {'Level':<{level_len}} {'Size':>10}  Path")
+    print(f"  {'-' * level_len} {'-' * 10}  {'-' * 40}")
+    result = []
     for p, size in items:
-        if size > 0:
-            print_item(p, size)
+        if size == 0:
+            continue
+        level = classify(p, title)
+        display = p.replace(str(HOME), "~")
+        level_color = {"safe": GREEN, "medium": YELLOW, "manual": ""}.get(level, "")
+        print(f"  {level_color}{level:<{level_len}}{RESET} {color_size(size):>10}  {display}")
+        result.append((display, size, level))
+    return result, total
 
 
 def cmd_scan():
     scan_overview()
 
-    results = []
+    all_items = []  # (display, size, level)
 
-    for title, path, depth, top_n in [
-        ("废纸篓", HOME / ".Trash", 2, 5),
+    scans = [
+        ("废纸篓", HOME / ".Trash", 2, 10),
         ("/tmp", "/tmp", 1, 10),
         ("~/Library/Caches", HOME / "Library/Caches", 1, 5),
         ("~/Library/Logs", HOME / "Library/Logs", 1, 5),
@@ -232,29 +280,39 @@ def cmd_scan():
         ("/Library (系统)", "/Library", 1, 5),
         ("/private/var", "/private/var", 1, 5),
         ("/System/Volumes/Data/System", "/System/Volumes/Data/System", 1, 5),
-    ]:
-        if not os.path.exists(str(path)):
-            continue
-        total = du_total(path)
-        if total == 0:
-            continue
-        print_header(f"{title}  ({fmt_size(total)})")
-        items = du_sort(path, depth, top_n)
-        for p, size in items:
-            if size > 0:
-                print_item(p, size)
-        if items:
-            results.append((title, total, items[:3]))
+    ]
 
-    print()
+    for title, path, depth, top_n in scans:
+        items, total = scan_dir_table(title, path, depth, top_n)
+        all_items.extend(items)
+
+    # ── 汇总 ──
+    print_header("汇总")
+    levels = [("safe", "safe 级可清理"), ("medium", "medium 级可清理"), ("manual", "需手动判断")]
+    grand_total = 0
+    for lv, label in levels:
+        lv_items = [(d, s) for d, s, l in all_items if l == lv]
+        if not lv_items:
+            continue
+        lv_total = sum(s for _, s in lv_items)
+        grand_total += lv_total
+        level_color = {"safe": GREEN, "medium": YELLOW, "manual": RED}.get(lv, "")
+        print(f"\n  {level_color}{BOLD}{label}{RESET}  ({fmt_size(lv_total)})")
+        # 按大小降序排
+        lv_items.sort(key=lambda x: x[1], reverse=True)
+        for d, s in lv_items[:15]:
+            print(f"    {color_size(s):>10}  {d}")
+    print(f"\n  {BOLD}总计: {fmt_size(grand_total)}{RESET} (分布: {GREEN}safe{RESET} / {YELLOW}medium{RESET} / {RED}manual{RESET})\n")
 
     # 记日志
-    lines = []
-    for title, total, top_items in results:
-        lines.append(f"  {title}: {fmt_size(total)}")
-        for p, s in top_items:
-            display = p.replace(str(HOME), "~")
-            lines.append(f"    {fmt_size(s):>8}  {display}")
+    lines = [f"总计 {fmt_size(grand_total)}"]
+    for lv, label in levels:
+        lv_items = [(d, s) for d, s, l in all_items if l == lv]
+        if lv_items:
+            t = sum(s for _, s in lv_items)
+            lines.append(f"  [{lv}] {fmt_size(t)}")
+            for d, s in lv_items[:10]:
+                lines.append(f"    {fmt_size(s):>8}  {d}")
     log_write("SCAN", "磁盘诊断", "\n".join(lines))
 
 
