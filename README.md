@@ -4,11 +4,19 @@
 
 ## 安装
 
+### 人类
+
 ```bash
 git clone https://github.com/wwq0327/taotie.git
 cd taotie
 chmod +x taotie.py
 ln -sf "$(pwd)/taotie.py" /usr/local/bin/taotie   # 或 ~/.local/bin/taotie
+```
+
+### Agent
+
+```bash
+mkdir -p ~/.local/bin && (cd ~/.local/share && rm -rf taotie && git clone -q https://github.com/wwq0327/taotie.git) && chmod +x ~/.local/share/taotie/taotie.py && ln -sf ~/.local/share/taotie/taotie.py ~/.local/bin/taotie
 ```
 
 Python 标准库，零依赖。
