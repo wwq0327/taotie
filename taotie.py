@@ -234,6 +234,38 @@ def classify(path, parent_title):
     return "manual"
 
 
+def _strip_ansi(s):
+    import re
+    return re.sub(r"\033\[[0-9;]*m", "", s)
+
+
+def _pad(s, width):
+    """按可见宽度填充字符串（忽略 ANSI 码）"""
+    visible = _strip_ansi(s)
+    return s + " " * (width - len(visible))
+
+
+def _table(rows, col_widths, headers):
+    """画 Unicode 框线表格。rows 是已着色字符串的列表。"""
+    def sep(pos):
+        if pos == "top":
+            return f"  ┌─{'─┬─'.join('─' * w for w in col_widths)}─┐"
+        elif pos == "mid":
+            return f"  ├─{'─┼─'.join('─' * w for w in col_widths)}─┤"
+        else:
+            return f"  └─{'─┴─'.join('─' * w for w in col_widths)}─┘"
+
+    lines = [sep("top")]
+    hdr = " │ ".join(f"{BOLD}{_pad(h, w)}{RESET}" for h, w in zip(headers, col_widths))
+    lines.append(f"  │ {hdr} │")
+    lines.append(sep("mid"))
+    for cells in rows:
+        row = " │ ".join(_pad(c, w) for c, w in zip(cells, col_widths))
+        lines.append(f"  │ {row} │")
+    lines.append(sep("bot"))
+    return "\n".join(lines)
+
+
 def scan_dir_table(title, path, depth=1, top_n=5):
     """打印一个目录的扫描结果（表格形式），返回 (条目列表, 总大小)"""
     if not os.path.exists(str(path)):
@@ -245,20 +277,30 @@ def scan_dir_table(title, path, depth=1, top_n=5):
     items = du_sort(path, depth, top_n)
     if not items:
         return [], total
-    # 表头
-    level_len = 8
-    print(f"  {'Level':<{level_len}} {'Size':>10}  Path")
-    print(f"  {'-' * level_len} {'-' * 10}  {'-' * 40}")
-    result = []
+
+    # 计算列宽
+    rows = []
+    max_path = 40
     for p, size in items:
         if size == 0:
             continue
         level = classify(p, title)
         display = p.replace(str(HOME), "~")
-        level_color = {"safe": GREEN, "medium": YELLOW, "manual": ""}.get(level, "")
-        print(f"  {level_color}{level:<{level_len}}{RESET} {color_size(size):>10}  {display}")
-        result.append((display, size, level))
-    return result, total
+        max_path = max(max_path, len(display))
+        rows.append((level, size, display))
+    max_path = min(max_path, 65)
+
+    col_w = [8, 10, max_path]
+    table_rows = []
+    level_color = {"safe": GREEN, "medium": YELLOW}
+    for level, size, display in rows:
+        lc = level_color.get(level, "")
+        lvl = f"{lc}{level}{RESET}" if lc else level
+        table_rows.append([lvl, color_size(size), display])
+
+    print(_table(table_rows, col_w, ["Level", "Size", "Path"]))
+
+    return [(display, size, lvl) for lvl, size, display in rows], total
 
 
 def cmd_scan():
