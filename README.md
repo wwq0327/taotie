@@ -62,3 +62,12 @@ taotie clean --level medium --dry-run
 | `aggressive` | 同 medium（更大范围需手动词） |
 
 清理前需输入 `y` 确认。`--dry-run` 只预览不执行。
+
+### 记录
+
+```bash
+taotie log         # 查看最近 30 条操作记录
+taotie log -n 10   # 最近 10 条
+```
+
+每次 scan 和 clean 自动写入 `~/.local/share/taotie/taotie.log`。

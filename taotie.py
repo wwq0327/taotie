@@ -5,11 +5,13 @@ import argparse
 import os
 import shutil
 import subprocess
-import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 HOME = Path.home()
+LOG_DIR = HOME / ".local/share/taotie"
+LOG_FILE = LOG_DIR / "taotie.log"
 
 RED = "\033[31m"
 YELLOW = "\033[33m"
@@ -104,8 +106,13 @@ def _du_total_fast(path):
 
 def _du_total_walk(path):
     """用 os.scandir 递归累加文件大小"""
-    # 如果是文件，直接返回大小
-    if os.path.isfile(path) or os.path.islink(path):
+    # 普通文件或失效 symlink → 直接返回大小
+    if os.path.isfile(path):
+        try:
+            return os.lstat(path).st_size
+        except OSError:
+            return 0
+    if os.path.islink(path) and not os.path.isdir(path):
         try:
             return os.lstat(path).st_size
         except OSError:
@@ -138,6 +145,42 @@ def print_header(text):
 def print_item(path, size, indent=2):
     display = path.replace(str(HOME), "~")
     print(f"{' ' * indent}{color_size(size):>10}  {display}")
+
+
+# ── log ───────────────────────────────────────────────
+
+
+def log_write(level, message, detail=""):
+    """追加一条日志"""
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{ts}] [{level}] {message}"
+    if detail:
+        line += f"\n{detail}"
+    with open(LOG_FILE, "a") as f:
+        f.write(line + "\n")
+
+
+def log_show(n=30):
+    """显示最近 n 条日志"""
+    if not LOG_FILE.exists():
+        print("  暂无日志。")
+        return
+    lines = LOG_FILE.read_text().strip().split("\n")
+    # 取最近 n 条（按时间戳行计数）
+    entries = []
+    current = None
+    for line in lines:
+        if line.startswith("[") and "]" in line[:22]:
+            if current:
+                entries.append(current)
+            current = line
+        elif current:
+            current += "\n" + line
+    if current:
+        entries.append(current)
+    for e in entries[-n:]:
+        print(e + "\n")
 
 
 # ── scan ──────────────────────────────────────────────
@@ -173,22 +216,46 @@ def scan_dir(title, path, depth=1, top_n=5):
 def cmd_scan():
     scan_overview()
 
-    scan_dir("废纸篓", HOME / ".Trash", depth=2)
-    scan_dir("/tmp", "/tmp", depth=1, top_n=10)
-    scan_dir("~/Library/Caches", HOME / "Library/Caches")
-    scan_dir("~/Library/Logs", HOME / "Library/Logs")
-    scan_dir("~/Library/Application Support", HOME / "Library/Application Support", depth=1)
-    scan_dir("~/Library/Containers", HOME / "Library/Containers", depth=1)
-    scan_dir("~/Library/Group Containers", HOME / "Library/Group Containers", depth=1)
-    scan_dir("~/.cache", HOME / ".cache")
-    scan_dir("~/Movies", HOME / "Movies")
+    results = []
 
-    scan_dir("/opt", "/opt")
-    scan_dir("/Library (系统)", "/Library", depth=1)
-    scan_dir("/private/var", "/private/var", depth=1)
-    scan_dir("/System/Volumes/Data/System", "/System/Volumes/Data/System", depth=1)
+    for title, path, depth, top_n in [
+        ("废纸篓", HOME / ".Trash", 2, 5),
+        ("/tmp", "/tmp", 1, 10),
+        ("~/Library/Caches", HOME / "Library/Caches", 1, 5),
+        ("~/Library/Logs", HOME / "Library/Logs", 1, 5),
+        ("~/Library/Application Support", HOME / "Library/Application Support", 1, 5),
+        ("~/Library/Containers", HOME / "Library/Containers", 1, 5),
+        ("~/Library/Group Containers", HOME / "Library/Group Containers", 1, 5),
+        ("~/.cache", HOME / ".cache", 1, 5),
+        ("~/Movies", HOME / "Movies", 1, 5),
+        ("/opt", "/opt", 1, 5),
+        ("/Library (系统)", "/Library", 1, 5),
+        ("/private/var", "/private/var", 1, 5),
+        ("/System/Volumes/Data/System", "/System/Volumes/Data/System", 1, 5),
+    ]:
+        if not os.path.exists(str(path)):
+            continue
+        total = du_total(path)
+        if total == 0:
+            continue
+        print_header(f"{title}  ({fmt_size(total)})")
+        items = du_sort(path, depth, top_n)
+        for p, size in items:
+            if size > 0:
+                print_item(p, size)
+        if items:
+            results.append((title, total, items[:3]))
 
     print()
+
+    # 记日志
+    lines = []
+    for title, total, top_items in results:
+        lines.append(f"  {title}: {fmt_size(total)}")
+        for p, s in top_items:
+            display = p.replace(str(HOME), "~")
+            lines.append(f"    {fmt_size(s):>8}  {display}")
+    log_write("SCAN", "磁盘诊断", "\n".join(lines))
 
 
 # ── clean ──────────────────────────────────────────────
@@ -232,6 +299,7 @@ def collect_tmp():
 def delete_items(items, desc):
     print(f"\n  清理 {desc}...")
     deleted = 0
+    deleted_paths = []
     for p, size in items:
         try:
             if os.path.isdir(p) and not os.path.islink(p):
@@ -239,9 +307,11 @@ def delete_items(items, desc):
             else:
                 os.unlink(p)
             deleted += size
+            deleted_paths.append((p, size))
         except Exception:
             pass
     print(f"    {GREEN}已清理 {fmt_size(deleted)}{RESET}")
+    return deleted_paths
 
 
 def cmd_clean(level, dry_run):
@@ -311,10 +381,24 @@ def cmd_clean(level, dry_run):
         print("  已取消。")
         return
 
+    log_lines = [f"等级: {level}"]
+    total_deleted = 0
     for desc, items in targets:
-        delete_items(items, desc)
+        deleted = delete_items(items, desc)
+        if deleted:
+            t = sum(s for _, s in deleted)
+            total_deleted += t
+            log_lines.append(f"  {desc}: {fmt_size(t)}")
+    log_write("CLEAN", f"清理完成，回收 {fmt_size(total_deleted)}", "\n".join(log_lines))
 
-    print(f"\n{BOLD}{GREEN}总计回收: {fmt_size(grand_total)}{RESET}\n")
+    print(f"\n{BOLD}{GREEN}总计回收: {fmt_size(total_deleted)}{RESET}\n")
+
+
+# ── log ───────────────────────────────────────────────
+
+
+def cmd_log(n):
+    log_show(n)
 
 
 # ── main ──────────────────────────────────────────────
@@ -332,12 +416,17 @@ def main():
     clean_p.add_argument("--dry-run", action="store_true",
                          help="只显示计划，不执行")
 
+    log_p = sub.add_parser("log", help="查看操作记录")
+    log_p.add_argument("-n", type=int, default=30, help="显示最近 n 条 (默认: 30)")
+
     args = parser.parse_args()
 
     if args.cmd == "scan":
         cmd_scan()
     elif args.cmd == "clean":
         cmd_clean(args.level, args.dry_run)
+    elif args.cmd == "log":
+        cmd_log(args.n)
 
 
 if __name__ == "__main__":
