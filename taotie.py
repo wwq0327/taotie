@@ -331,14 +331,20 @@ def cmd_scan():
     ]
 
     # 并行收集数据
+    total_scans = len(scans)
     results = {}
+    print(f"\n  {CYAN}扫描中…{RESET}")
     with ThreadPoolExecutor(max_workers=12) as ex:
         futures = {ex.submit(_collect_items, t, p, d, n): t for t, p, d, n in scans}
         for f in as_completed(futures):
             title, items, total = f.result()
             results[title] = (items, total)
+            n = len(results)
+            bar = "▓" * (n * 20 // total_scans) + "░" * (20 - n * 20 // total_scans)
+            print(f"  {bar}  [{n}/{total_scans}]  {title}  {color_size(total)}")
 
-    # 按原始顺序打印
+    # 按原始顺序打印详细表格
+    print()
     all_items = []
     for title, _, _, _ in scans:
         items, total = results.get(title, ([], 0))
