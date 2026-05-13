@@ -332,7 +332,7 @@ def cmd_scan():
 
     # 并行收集数据
     results = {}
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=12) as ex:
         futures = {ex.submit(_collect_items, t, p, d, n): t for t, p, d, n in scans}
         for f in as_completed(futures):
             title, items, total = f.result()
