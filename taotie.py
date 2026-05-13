@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
@@ -266,47 +267,52 @@ def _table(rows, col_widths, headers):
     return "\n".join(lines)
 
 
-def scan_dir_table(title, path, depth=1, top_n=5):
-    """打印一个目录的扫描结果（表格形式），返回 (条目列表, 总大小)"""
+def _collect_items(title, path, depth, top_n):
+    """收集扫描数据（只做 du，不打印）。返回 (title, items, total)"""
     if not os.path.exists(str(path)):
-        return [], 0
+        return title, [], 0
     total = du_total(path)
     if total == 0:
-        return [], 0
-    print_header(f"{title}  ({fmt_size(total)})")
-    items = du_sort(path, depth, top_n)
-    if not items:
-        return [], total
-
-    # 计算列宽
+        return title, [], 0
+    raw = du_sort(path, depth, top_n)
     rows = []
-    max_path = 40
-    for p, size in items:
+    for p, size in raw:
         if size == 0:
             continue
         level = classify(p, title)
         display = p.replace(str(HOME), "~")
-        max_path = max(max_path, len(display))
-        rows.append((level, size, display))
-    max_path = min(max_path, 65)
+        rows.append((display, size, level))
+    return title, rows, total
 
+
+def _print_dir_table(title, items, total):
+    """打印一个目录的框线表格"""
+    if not items:
+        # 有总大小但无子项列表（如空废纸篓），只打表头
+        if total > 0:
+            print_header(f"{title}  ({fmt_size(total)})")
+        return
+    print_header(f"{title}  ({fmt_size(total)})")
+
+    # 计算列宽
+    max_path = 40
+    for display, _, _ in items:
+        max_path = max(max_path, len(display))
+    max_path = min(max_path, 65)
     col_w = [8, 10, max_path]
-    table_rows = []
+
     level_color = {"safe": GREEN, "medium": YELLOW}
-    for level, size, display in rows:
+    table_rows = []
+    for display, size, level in items:
         lc = level_color.get(level, "")
         lvl = f"{lc}{level}{RESET}" if lc else level
         table_rows.append([lvl, color_size(size), display])
 
     print(_table(table_rows, col_w, ["Level", "Size", "Path"]))
 
-    return [(display, size, lvl) for lvl, size, display in rows], total
-
 
 def cmd_scan():
     scan_overview()
-
-    all_items = []  # (display, size, level)
 
     scans = [
         ("废纸篓", HOME / ".Trash", 2, 10),
@@ -324,8 +330,19 @@ def cmd_scan():
         ("/System/Volumes/Data/System", "/System/Volumes/Data/System", 1, 5),
     ]
 
-    for title, path, depth, top_n in scans:
-        items, total = scan_dir_table(title, path, depth, top_n)
+    # 并行收集数据
+    results = {}
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_collect_items, t, p, d, n): t for t, p, d, n in scans}
+        for f in as_completed(futures):
+            title, items, total = f.result()
+            results[title] = (items, total)
+
+    # 按原始顺序打印
+    all_items = []
+    for title, _, _, _ in scans:
+        items, total = results.get(title, ([], 0))
+        _print_dir_table(title, items, total)
         all_items.extend(items)
 
     # ── 汇总 ──
