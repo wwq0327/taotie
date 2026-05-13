@@ -330,30 +330,64 @@ def cmd_scan():
 
     # ── 汇总 ──
     print_header("汇总")
-    levels = [("safe", "safe 级可清理"), ("medium", "medium 级可清理"), ("manual", "需手动判断")]
+    level_color = {"safe": GREEN, "medium": YELLOW, "manual": RED}
+    level_labels = [("safe", "safe 级可清理"), ("medium", "medium 级可清理"), ("manual", "需手动判断")]
+
+    # 收集每个等级的项目（按大小降序）
+    lv_groups = {}
+    for lv, label in level_labels:
+        items = [(d, s) for d, s, l in all_items if l == lv]
+        items.sort(key=lambda x: x[1], reverse=True)
+        lv_groups[lv] = items
+
+    # 对齐行数
+    max_rows = min(max(len(v) for v in lv_groups.values()), 15)
+    if max_rows == 0:
+        print("  无数据\n")
+        return
+
+    # 计算列宽（Path 列统一宽度）
+    path_w = 40
+    for items in lv_groups.values():
+        for d, _ in items[:max_rows]:
+            path_w = max(path_w, len(d))
+    path_w = min(path_w, 55)
+    col_w = [10, path_w]
+
     grand_total = 0
-    for lv, label in levels:
-        lv_items = [(d, s) for d, s, l in all_items if l == lv]
-        if not lv_items:
+    for lv, label in level_labels:
+        items = lv_groups[lv]
+        total = sum(s for _, s in items)
+        grand_total += total
+        lc = level_color[lv]
+
+        # 表头
+        print(f"\n  {lc}{BOLD}{label}{RESET}  ({fmt_size(total)})")
+        if not items:
+            print("    (无)")
             continue
-        lv_total = sum(s for _, s in lv_items)
-        grand_total += lv_total
-        level_color = {"safe": GREEN, "medium": YELLOW, "manual": RED}.get(lv, "")
-        print(f"\n  {level_color}{BOLD}{label}{RESET}  ({fmt_size(lv_total)})")
-        # 按大小降序排
-        lv_items.sort(key=lambda x: x[1], reverse=True)
-        for d, s in lv_items[:15]:
-            print(f"    {color_size(s):>10}  {d}")
+
+        # 数据行（按大小降序，补齐到 max_rows）
+        table_rows = []
+        for i in range(max_rows):
+            if i < len(items):
+                d, s = items[i]
+                table_rows.append([color_size(s), d])
+            else:
+                table_rows.append(["", ""])
+
+        print(_table(table_rows, col_w, ["Size", "Path"]))
+
     print(f"\n  {BOLD}总计: {fmt_size(grand_total)}{RESET} (分布: {GREEN}safe{RESET} / {YELLOW}medium{RESET} / {RED}manual{RESET})\n")
 
     # 记日志
     lines = [f"总计 {fmt_size(grand_total)}"]
-    for lv, label in levels:
-        lv_items = [(d, s) for d, s, l in all_items if l == lv]
-        if lv_items:
-            t = sum(s for _, s in lv_items)
+    for lv, label in level_labels:
+        items = lv_groups[lv]
+        if items:
+            t = sum(s for _, s in items)
             lines.append(f"  [{lv}] {fmt_size(t)}")
-            for d, s in lv_items[:10]:
+            for d, s in items[:10]:
                 lines.append(f"    {fmt_size(s):>8}  {d}")
     log_write("SCAN", "磁盘诊断", "\n".join(lines))
 
