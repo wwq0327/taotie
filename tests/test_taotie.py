@@ -8,6 +8,7 @@ from unittest.mock import patch, MagicMock, call
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import taotie
+import taotie._shared as shared
 
 # 预编译正则 (修复后模块级常量)
 _STRIP_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
