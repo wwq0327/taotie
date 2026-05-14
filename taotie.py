@@ -219,19 +219,45 @@ MEDIUM_PATHS = {
 PY_CACHE_DIRS = {"uv", "pip"}  # safe 级里的 ~/.cache/xxx 子目录
 
 
+def _make_cache():
+    """懒计算 normpath 缓存 (支持测试时 mock HOME)."""
+    return (
+        tuple(os.path.normpath(sp) for sp in SAFE_PATHS),
+        tuple(os.path.normpath(mp) for mp in MEDIUM_PATHS),
+        os.path.normpath(str(HOME / ".cache")),
+    )
+
+
+# 模块级缓存 (惰性初始化)
+_cache = None
+
+
+def _get_path_cache():
+    global _cache
+    if _cache is None:
+        _cache = _make_cache()
+    return _cache
+
+
+def _reset_path_cache():
+    """重置路径缓存 (用于测试)."""
+    global _cache
+    _cache = None
+
+
 def classify(path, parent_title):
     """判断一个扫描条目属于哪个清理等级"""
+    safe_norm, medium_norm, cache_dir_norm = _get_path_cache()
     p = os.path.normpath(str(path))
-    for sp in SAFE_PATHS:
-        if p.startswith(os.path.normpath(sp)):
+    for sp in safe_norm:
+        if p.startswith(sp):
             return "safe"
-    for mp in MEDIUM_PATHS:
-        if p.startswith(os.path.normpath(mp)):
+    for mp in medium_norm:
+        if p.startswith(mp):
             return "medium"
     # ~/.cache 下的 uv/pip 归 safe
-    cache_dir = str(HOME / ".cache")
-    if p.startswith(cache_dir):
-        sub = os.path.relpath(p, cache_dir).split("/")[0]
+    if p.startswith(cache_dir_norm):
+        sub = os.path.relpath(p, cache_dir_norm).split("/")[0]
         if sub in PY_CACHE_DIRS:
             return "safe"
         return "medium"

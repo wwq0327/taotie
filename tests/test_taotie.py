@@ -14,8 +14,8 @@ _STRIP_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 
 
 @pytest.fixture
-def fake_home(tmp_path):
-    """创建临时 HOME 结构."""
+def fake_home(tmp_path, monkeypatch):
+    """创建临时 HOME 结构, 并重置路径缓存."""
     home = tmp_path / "home"
     home.mkdir()
     # 模拟典型缓存目录
@@ -27,6 +27,8 @@ def fake_home(tmp_path):
     (home / ".Trash").mkdir()
     (home / "Library" / "Caches").mkdir(parents=True)
     (home / "Library" / "Logs").mkdir(parents=True)
+    # 重置缓存使新的 HOME 生效
+    taotie._reset_path_cache()
     return home
 
 
@@ -100,6 +102,21 @@ class TestAggressiveLevel:
         docker_called_in_aggressive = docker_path in collect_calls
         assert docker_called_in_aggressive, \
             f"aggressive 应扫描 Docker 目录, 但调用的路径为: {[c for c in collect_calls if 'docker' in c or 'Containers' in c]}"
+
+
+class TestClassifyPerformance:
+    """测试 classify 性能问题.
+
+    Bug: classify 每次调用都对常量路径做 normpath, 应在模块级缓存.
+    """
+
+    def test_classify_does_not_normpath_constants(self):
+        """classify 不应在循环内对 SAFE_PATHS/MEDIUM_PATHS 做 normpath."""
+        import inspect
+        source = inspect.getsource(taotie.classify)
+        # 检查函数体内是否有对常量的 normpath 调用
+        assert "normpath(sp)" not in source and "normpath(mp)" not in source, \
+            "classify 不应在循环内对 SAFE_PATHS/MEDIUM_PATHS 调用 normpath"
 
 
 class TestTablePerformance:
