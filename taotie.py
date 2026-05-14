@@ -3,12 +3,15 @@
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+
+_STRIP_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 
 HOME = Path.home()
 LOG_DIR = HOME / ".local/share/taotie"
@@ -236,8 +239,7 @@ def classify(path, parent_title):
 
 
 def _strip_ansi(s):
-    import re
-    return re.sub(r"\033\[[0-9;]*m", "", s)
+    return _STRIP_ANSI_RE.sub("", s)
 
 
 def _pad(s, width):
