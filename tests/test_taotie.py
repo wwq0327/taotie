@@ -102,6 +102,20 @@ class TestAggressiveLevel:
             f"aggressive 应扫描 Docker 目录, 但调用的路径为: {[c for c in collect_calls if 'docker' in c or 'Containers' in c]}"
 
 
+class TestTablePerformance:
+    """测试 _table 性能问题.
+
+    Bug: _table 每次调用都重新定义 sep 函数.
+    """
+
+    def test_table_sep_not_defined_inside_function(self):
+        """sep 不应在 _table 函数内部定义, 而应在模块级."""
+        import inspect
+        source = inspect.getsource(taotie._table)
+        assert "def sep" not in source, \
+            "_table 函数体内不应定义 sep, 应使用模块级函数"
+
+
 class TestStripAnsiPerformance:
     """测试 _strip_ansi 性能问题.
 

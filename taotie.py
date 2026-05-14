@@ -248,24 +248,26 @@ def _pad(s, width):
     return s + " " * (width - len(visible))
 
 
+def _table_sep(col_widths, pos):
+    """生成表格分隔线。"""
+    if pos == "top":
+        return f"  ┌─{'─┬─'.join('─' * w for w in col_widths)}─┐"
+    elif pos == "mid":
+        return f"  ├─{'─┼─'.join('─' * w for w in col_widths)}─┤"
+    else:
+        return f"  └─{'─┴─'.join('─' * w for w in col_widths)}─┘"
+
+
 def _table(rows, col_widths, headers):
     """画 Unicode 框线表格。rows 是已着色字符串的列表。"""
-    def sep(pos):
-        if pos == "top":
-            return f"  ┌─{'─┬─'.join('─' * w for w in col_widths)}─┐"
-        elif pos == "mid":
-            return f"  ├─{'─┼─'.join('─' * w for w in col_widths)}─┤"
-        else:
-            return f"  └─{'─┴─'.join('─' * w for w in col_widths)}─┘"
-
-    lines = [sep("top")]
+    lines = [_table_sep(col_widths, "top")]
     hdr = " │ ".join(f"{BOLD}{_pad(h, w)}{RESET}" for h, w in zip(headers, col_widths))
     lines.append(f"  │ {hdr} │")
-    lines.append(sep("mid"))
+    lines.append(_table_sep(col_widths, "mid"))
     for cells in rows:
         row = " │ ".join(_pad(c, w) for c, w in zip(cells, col_widths))
         lines.append(f"  │ {row} │")
-    lines.append(sep("bot"))
+    lines.append(_table_sep(col_widths, "bot"))
     return "\n".join(lines)
 
 
