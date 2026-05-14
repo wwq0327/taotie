@@ -515,6 +515,27 @@ def cmd_clean(level, dry_run):
         if old_logs:
             targets.append(("~/Library/Logs (>=7天)", old_logs))
 
+    # Aggressive
+    if level == "aggressive":
+        # Docker 镜像和缓存
+        docker_data = HOME / "Library/Containers/com.docker.docker/Data"
+        if docker_data.exists():
+            docker_items = collect_dir(str(docker_data))
+            if docker_items:
+                targets.append(("Docker 镜像数据", docker_items))
+        # Xcode DerivedData (包含编译缓存)
+        xcode_derived = HOME / "Library/Developer/Xcode/DerivedData"
+        if xcode_derived.exists():
+            xcode_items = collect_dir(str(xcode_derived))
+            if xcode_items:
+                targets.append(("Xcode DerivedData", xcode_items))
+        # CoreSimulator 设备缓存
+        sim_devices = HOME / "Library/Developer/CoreSimulator/Devices"
+        if sim_devices.exists():
+            sim_items = collect_dir(str(sim_devices))
+            if sim_items:
+                targets.append(("CoreSimulator 设备", sim_items))
+
     grand_total = sum(sum(s for _, s in items) for _, items in targets)
 
     print(f"\n{BOLD}清理等级: {YELLOW}{level}{RESET}")
