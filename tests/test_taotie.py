@@ -195,6 +195,27 @@ class TestClean:
         assert items == []
 
 
+class TestCleanQuiet:
+    def test_clean_quiet_no_print(self, fake_home, monkeypatch, capsys):
+        """cmd_clean(quiet=True) 不向 stdout 打印清理详情"""
+        import taotie.clean as clean_mod
+
+        # Mock so there's nothing to clean
+        monkeypatch.setattr(clean_mod, 'collect_dir', lambda p: [])
+        monkeypatch.setattr(clean_mod, 'collect_tmp', lambda: [])
+        # Mock du_total for before/after
+        call_count = [0]
+        def mock_du_total(p):
+            call_count[0] += 1
+            return 10 * 1024**3  # return same value both times
+        monkeypatch.setattr(clean_mod, 'du_total', mock_du_total)
+
+        # dry_run=True should not trigger the before/after report
+        clean_mod.cmd_clean("safe", dry_run=True, quiet=True)
+        captured = capsys.readouterr().out
+        assert "清理" not in captured  # no cleanup output in dry-run
+
+
 class TestPrintSummary:
     def test_print_summary_runs_without_error(self, fake_home, capsys):
         """print_summary 接受正确结构的 dict 并打印，不抛异常"""

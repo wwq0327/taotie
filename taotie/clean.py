@@ -1,6 +1,7 @@
 """Clean command — safe/medium/aggressive disk cleanup."""
 import os
 import shutil
+import subprocess
 import time
 
 from taotie._shared import (
@@ -62,7 +63,9 @@ def delete_items(items, desc):
     return deleted_paths
 
 
-def cmd_clean(level, dry_run):
+def cmd_clean(level, dry_run, quiet=False):
+    # ── 清理前：记录 HOME 目录总大小 ──
+    disk_before = du_total(get_home())
     targets = []
 
     # Safe: 废纸篓 + Caches + /tmp 过期文件
@@ -143,11 +146,13 @@ def cmd_clean(level, dry_run):
 
     grand_total = sum(sum(s for _, s in items) for _, items in targets)
 
-    print(f"\n{BOLD}清理等级: {YELLOW}{level}{RESET}")
-    print(f"可回收空间: {RED if grand_total > 10*1024**3 else GREEN}{fmt_size(grand_total)}{RESET}\n")
+    if not quiet:
+        print(f"\n{BOLD}清理等级: {YELLOW}{level}{RESET}")
+        print(f"可回收空间: {RED if grand_total > 10*1024**3 else GREEN}{fmt_size(grand_total)}{RESET}\n")
 
     if grand_total == 0:
-        print("  没有可清理的内容。")
+        if not quiet:
+            print("  没有可清理的内容。")
         return
 
     for desc, items in targets:
@@ -174,4 +179,27 @@ def cmd_clean(level, dry_run):
             log_lines.append(f"  {desc}: {fmt_size(t)}")
     log_write("CLEAN", f"清理完成，回收 {fmt_size(total_deleted)}", "\n".join(log_lines))
 
-    print(f"\n{BOLD}{GREEN}总计回收: {fmt_size(total_deleted)}{RESET}\n")
+    # ── 清理后：对比报告 ──
+    disk_after = du_total(get_home())
+    recovered = disk_before - disk_after
+    pct = (recovered / disk_before * 100) if disk_before > 0 else 0
+
+    if quiet:
+        _send_notification(
+            f"taotie 清理完成",
+            f"回收 {fmt_size(recovered)}（节省 {pct:.1f}%）"
+        )
+    else:
+        print(f"""
+{BOLD}{GREEN}━━━ 清理完成 ━━━{RESET}
+  回收空间: {GREEN}{fmt_size(recovered)}{RESET}
+  节省比例: {GREEN}{pct:.1f}%{RESET}
+  清理前:  {color_size(disk_before)}
+  清理后:  {color_size(disk_after)}
+""")
+
+
+def _send_notification(title: str, body: str) -> None:
+    """发送 macOS 系统通知。"""
+    script = f'display notification "{body}" with title "{title}"'
+    subprocess.run(["osascript", "-e", script], capture_output=True)

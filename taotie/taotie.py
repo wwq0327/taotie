@@ -20,6 +20,8 @@ def main():
                          default="safe", help="安全等级 (默认: safe)")
     clean_p.add_argument("--dry-run", action="store_true",
                          help="只显示计划，不执行")
+    clean_p.add_argument("--quiet", action="store_true",
+                         help="静默模式，完成后发系统通知")
 
     log_p = sub.add_parser("log", help="查看操作记录")
     log_p.add_argument("-n", type=int, default=30, help="显示最近 n 条 (默认: 30)")
@@ -29,7 +31,7 @@ def main():
     if args.cmd == "scan":
         cmd_scan(json_output=args.json)
     elif args.cmd == "clean":
-        cmd_clean(args.level, args.dry_run)
+        cmd_clean(args.level, args.dry_run, getattr(args, 'quiet', False))
     elif args.cmd == "log":
         cmd_log(args.n)
 
