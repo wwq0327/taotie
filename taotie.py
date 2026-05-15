@@ -12,7 +12,7 @@ from taotie._shared import (
     fmt_size, color_size, run, du_sort, du_total,
     print_header, print_item, HOME, LOG_DIR, LOG_FILE,
     RED, YELLOW, GREEN, CYAN, BOLD, RESET,
-    _STRIP_ANSI_RE,
+    _STRIP_ANSI_RE, get_home, _set_home,
 )
 
 # ── log ───────────────────────────────────────────────
@@ -70,15 +70,15 @@ def scan_overview():
 
 # 清理等级分类
 SAFE_PATHS = {
-    str(HOME / ".Trash"),
-    str(HOME / "Library/Caches"),
+    str(get_home() / ".Trash"),
+    str(get_home() / "Library/Caches"),
     "/tmp",
     "/private/tmp",
 }
 MEDIUM_PATHS = {
-    str(HOME / ".cache/whisper"),
-    str(HOME / ".cache/huggingface"),
-    str(HOME / "Library/Logs"),
+    str(get_home() / ".cache/whisper"),
+    str(get_home() / ".cache/huggingface"),
+    str(get_home() / "Library/Logs"),
 }
 PY_CACHE_DIRS = {"uv", "pip"}  # safe 级里的 ~/.cache/xxx 子目录
 
@@ -88,7 +88,7 @@ def _make_cache():
     return (
         tuple(os.path.normpath(sp) for sp in SAFE_PATHS),
         tuple(os.path.normpath(mp) for mp in MEDIUM_PATHS),
-        os.path.normpath(str(HOME / ".cache")),
+        os.path.normpath(str(get_home() / ".cache")),
     )
 
 
@@ -174,7 +174,7 @@ def _collect_items(title, path, depth, top_n):
         if size == 0:
             continue
         level = classify(p, title)
-        display = p.replace(str(HOME), "~")
+        display = p.replace(str(get_home()), "~")
         rows.append((display, size, level))
     return title, rows, total
 
@@ -209,15 +209,15 @@ def cmd_scan():
     scan_overview()
 
     scans = [
-        ("废纸篓", HOME / ".Trash", 2, 10),
+        ("废纸篓", get_home() / ".Trash", 2, 10),
         ("/tmp", "/tmp", 1, 10),
-        ("~/Library/Caches", HOME / "Library/Caches", 1, 5),
-        ("~/Library/Logs", HOME / "Library/Logs", 1, 5),
-        ("~/Library/Application Support", HOME / "Library/Application Support", 1, 5),
-        ("~/Library/Containers", HOME / "Library/Containers", 1, 5),
-        ("~/Library/Group Containers", HOME / "Library/Group Containers", 1, 5),
-        ("~/.cache", HOME / ".cache", 1, 5),
-        ("~/Movies", HOME / "Movies", 1, 5),
+        ("~/Library/Caches", get_home() / "Library/Caches", 1, 5),
+        ("~/Library/Logs", get_home() / "Library/Logs", 1, 5),
+        ("~/Library/Application Support", get_home() / "Library/Application Support", 1, 5),
+        ("~/Library/Containers", get_home() / "Library/Containers", 1, 5),
+        ("~/Library/Group Containers", get_home() / "Library/Group Containers", 1, 5),
+        ("~/.cache", get_home() / ".cache", 1, 5),
+        ("~/Movies", get_home() / "Movies", 1, 5),
         ("/opt", "/opt", 1, 5),
         ("/Library (系统)", "/Library", 1, 5),
         ("/private/var", "/private/var", 1, 5),
@@ -369,11 +369,11 @@ def cmd_clean(level, dry_run):
     targets = []
 
     # Safe: 废纸篓 + Caches + /tmp 过期文件
-    trash = collect_dir(str(HOME / ".Trash"))
+    trash = collect_dir(str(get_home() / ".Trash"))
     if trash:
         targets.append(("废纸篓", trash))
 
-    caches = collect_dir(str(HOME / "Library/Caches"))
+    caches = collect_dir(str(get_home() / "Library/Caches"))
     if caches:
         targets.append(("~/Library/Caches", caches))
 
@@ -383,7 +383,7 @@ def cmd_clean(level, dry_run):
 
     # uv/pip caches
     for cname in ["uv", "pip"]:
-        cpath = HOME / ".cache" / cname
+        cpath = get_home() / ".cache" / cname
         citems = collect_dir(str(cpath))
         if citems:
             targets.append((f"~/.cache/{cname}", citems))
@@ -391,13 +391,13 @@ def cmd_clean(level, dry_run):
     # Medium
     if level in ("medium", "aggressive"):
         for cname in ["whisper", "huggingface"]:
-            cpath = HOME / ".cache" / cname
+            cpath = get_home() / ".cache" / cname
             citems = collect_dir(str(cpath))
             if citems:
                 targets.append((f"~/.cache/{cname} (模型)", citems))
 
         # 旧日志 (>7天)
-        log_dir = HOME / "Library/Logs"
+        log_dir = get_home() / "Library/Logs"
         old_logs = []
         now = time.time()
         for entry in os.listdir(str(log_dir)):
@@ -412,19 +412,19 @@ def cmd_clean(level, dry_run):
     # Aggressive
     if level == "aggressive":
         # Docker 镜像和缓存
-        docker_data = HOME / "Library/Containers/com.docker.docker/Data"
+        docker_data = get_home() / "Library/Containers/com.docker.docker/Data"
         if docker_data.exists():
             docker_items = collect_dir(str(docker_data))
             if docker_items:
                 targets.append(("Docker 镜像数据", docker_items))
         # Xcode DerivedData (包含编译缓存)
-        xcode_derived = HOME / "Library/Developer/Xcode/DerivedData"
+        xcode_derived = get_home() / "Library/Developer/Xcode/DerivedData"
         if xcode_derived.exists():
             xcode_items = collect_dir(str(xcode_derived))
             if xcode_items:
                 targets.append(("Xcode DerivedData", xcode_items))
         # CoreSimulator 设备缓存
-        sim_devices = HOME / "Library/Developer/CoreSimulator/Devices"
+        sim_devices = get_home() / "Library/Developer/CoreSimulator/Devices"
         if sim_devices.exists():
             sim_items = collect_dir(str(sim_devices))
             if sim_items:

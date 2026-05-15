@@ -1,5 +1,6 @@
 """共享工具函数和常量。"""
 from __future__ import annotations
+
 import os
 import re
 import shutil
@@ -8,8 +9,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 
+# ── 常量 ────────────────────────────────────────────────
 RED = "\033[31m"
 YELLOW = "\033[33m"
 GREEN = "\033[32m"
@@ -19,7 +21,22 @@ RESET = "\033[0m"
 
 _STRIP_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 
-HOME = Path.home()
+# ── HOME (支持测试时动态 patch) ────────────────────────
+_home_getter: Callable[[], Path] = Path.home
+
+
+def _set_home(path: Path) -> None:
+    """设置 HOME 路径（用于测试）。"""
+    global _home_getter
+    _home_getter = lambda: path
+
+
+def get_home() -> Path:
+    """返回当前 HOME 路径。"""
+    return _home_getter()
+
+
+HOME = get_home()
 LOG_DIR = HOME / ".local/share/taotie"
 LOG_FILE = LOG_DIR / "taotie.log"
 
