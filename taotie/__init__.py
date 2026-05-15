@@ -21,15 +21,16 @@ _TAOTIE_NAMES = (
     '_reset_path_cache', '_strip_ansi', '_table',
     '_table_sep', '_pad', '_make_cache', '_get_path_cache',
     'scan_overview', '_collect_items', '_print_dir_table',
-    'log_write', 'log_show',
     'PY_CACHE_DIRS', '_set_home',
 )
 for _name in _TAOTIE_NAMES:
     globals()[_name] = getattr(_root, _name)
 
-# Also expose get_home and _set_home from _shared
-from taotie._shared import get_home, _set_home
+# Also expose get_home, _set_home, log_write, log_show from _shared
+from taotie._shared import get_home, _set_home, log_write, log_show
 globals()['get_home'] = get_home
 globals()['_set_home'] = _set_home
+globals()['log_write'] = log_write
+globals()['log_show'] = log_show
 
 __all__ = ["cmd_scan", "cmd_clean", "cmd_log"]

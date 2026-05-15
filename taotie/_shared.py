@@ -165,3 +165,36 @@ def print_header(text) -> None:
 def print_item(path, size, indent=2) -> None:
     display = path.replace(str(HOME), "~")
     print(f"{' ' * indent}{color_size(size):>10}  {display}")
+
+
+def log_write(level, message, detail=""):
+    """追加一条日志"""
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{ts}] [{level}] {message}"
+    if detail:
+        line += f"\n{detail}"
+    with open(LOG_FILE, "a") as f:
+        f.write(line + "\n")
+
+
+def log_show(n=30):
+    """显示最近 n 条日志"""
+    if not LOG_FILE.exists():
+        print("  暂无日志。")
+        return
+    lines = LOG_FILE.read_text().strip().split("\n")
+    # 取最近 n 条（按时间戳行计数）
+    entries = []
+    current = None
+    for line in lines:
+        if line.startswith("[") and "]" in line[:22]:
+            if current:
+                entries.append(current)
+            current = line
+        elif current:
+            current += "\n" + line
+    if current:
+        entries.append(current)
+    for e in entries[-n:]:
+        print(e + "\n")
