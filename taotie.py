@@ -14,6 +14,11 @@ from taotie._shared import (
     RED, YELLOW, GREEN, CYAN, BOLD, RESET,
     _STRIP_ANSI_RE, get_home, _set_home,
 )
+from taotie._cache import (
+    classify, _strip_ansi, _pad, _table_sep, _table,
+    _make_cache, _get_path_cache, _reset_path_cache,
+    PY_CACHE_DIRS,
+)
 
 # ── log ───────────────────────────────────────────────
 
@@ -68,97 +73,6 @@ def scan_overview():
         print(f"\n  APFS 本地快照: 无")
 
 
-# 清理等级分类
-SAFE_PATHS = {
-    str(get_home() / ".Trash"),
-    str(get_home() / "Library/Caches"),
-    "/tmp",
-    "/private/tmp",
-}
-MEDIUM_PATHS = {
-    str(get_home() / ".cache/whisper"),
-    str(get_home() / ".cache/huggingface"),
-    str(get_home() / "Library/Logs"),
-}
-PY_CACHE_DIRS = {"uv", "pip"}  # safe 级里的 ~/.cache/xxx 子目录
-
-
-def _make_cache():
-    """懒计算 normpath 缓存 (支持测试时 mock HOME)."""
-    return (
-        tuple(os.path.normpath(sp) for sp in SAFE_PATHS),
-        tuple(os.path.normpath(mp) for mp in MEDIUM_PATHS),
-        os.path.normpath(str(get_home() / ".cache")),
-    )
-
-
-# 模块级缓存 (惰性初始化)
-_cache = None
-
-
-def _get_path_cache():
-    global _cache
-    if _cache is None:
-        _cache = _make_cache()
-    return _cache
-
-
-def _reset_path_cache():
-    """重置路径缓存 (用于测试)."""
-    global _cache
-    _cache = None
-
-
-def classify(path, parent_title):
-    """判断一个扫描条目属于哪个清理等级"""
-    safe_norm, medium_norm, cache_dir_norm = _get_path_cache()
-    p = os.path.normpath(str(path))
-    for sp in safe_norm:
-        if p.startswith(sp):
-            return "safe"
-    for mp in medium_norm:
-        if p.startswith(mp):
-            return "medium"
-    # ~/.cache 下的 uv/pip 归 safe
-    if p.startswith(cache_dir_norm):
-        sub = os.path.relpath(p, cache_dir_norm).split("/")[0]
-        if sub in PY_CACHE_DIRS:
-            return "safe"
-        return "medium"
-    return "manual"
-
-
-def _strip_ansi(s):
-    return _STRIP_ANSI_RE.sub("", s)
-
-
-def _pad(s, width):
-    """按可见宽度填充字符串（忽略 ANSI 码）"""
-    visible = _strip_ansi(s)
-    return s + " " * (width - len(visible))
-
-
-def _table_sep(col_widths, pos):
-    """生成表格分隔线。"""
-    if pos == "top":
-        return f"  ┌─{'─┬─'.join('─' * w for w in col_widths)}─┐"
-    elif pos == "mid":
-        return f"  ├─{'─┼─'.join('─' * w for w in col_widths)}─┤"
-    else:
-        return f"  └─{'─┴─'.join('─' * w for w in col_widths)}─┘"
-
-
-def _table(rows, col_widths, headers):
-    """画 Unicode 框线表格。rows 是已着色字符串的列表。"""
-    lines = [_table_sep(col_widths, "top")]
-    hdr = " │ ".join(f"{BOLD}{_pad(h, w)}{RESET}" for h, w in zip(headers, col_widths))
-    lines.append(f"  │ {hdr} │")
-    lines.append(_table_sep(col_widths, "mid"))
-    for cells in rows:
-        row = " │ ".join(_pad(c, w) for c, w in zip(cells, col_widths))
-        lines.append(f"  │ {row} │")
-    lines.append(_table_sep(col_widths, "bot"))
-    return "\n".join(lines)
 
 
 def _collect_items(title, path, depth, top_n):
