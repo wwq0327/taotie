@@ -13,7 +13,7 @@ from taotie._shared import (
     print_header, print_item, HOME, LOG_DIR, LOG_FILE,
     RED, YELLOW, GREEN, CYAN, BOLD, RESET,
     _STRIP_ANSI_RE, get_home, _set_home,
-    log_write, log_show,
+    log_write,
 )
 from taotie._cache import (
     classify, _strip_ansi, _pad, _table_sep, _table,
@@ -23,6 +23,9 @@ from taotie._cache import (
 
 # ── scan ──────────────────────────────────────────────
 from taotie.scan import cmd_scan, scan_overview, _collect_items, _print_dir_table
+
+# ── log ───────────────────────────────────────────────
+from taotie.log import cmd_log
 
 # ── clean ──────────────────────────────────────────────
 
@@ -179,13 +182,6 @@ def cmd_clean(level, dry_run):
     log_write("CLEAN", f"清理完成，回收 {fmt_size(total_deleted)}", "\n".join(log_lines))
 
     print(f"\n{BOLD}{GREEN}总计回收: {fmt_size(total_deleted)}{RESET}\n")
-
-
-# ── log ───────────────────────────────────────────────
-
-
-def cmd_log(n):
-    log_show(n)
 
 
 # ── main ──────────────────────────────────────────────

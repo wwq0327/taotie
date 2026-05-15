@@ -16,7 +16,7 @@ _TAOTIE_NAMES = (
     'print_header', 'print_item', 'LOG_DIR', 'LOG_FILE',
     'RED', 'YELLOW', 'GREEN', 'CYAN', 'BOLD', 'RESET',
     '_STRIP_ANSI_RE',
-    'cmd_scan', 'cmd_clean', 'cmd_log',
+    'cmd_scan', 'cmd_clean',
     'classify', 'collect_dir', 'collect_tmp', 'delete_items',
     '_reset_path_cache', '_strip_ansi', '_table',
     '_table_sep', '_pad', '_make_cache', '_get_path_cache',
@@ -26,11 +26,14 @@ _TAOTIE_NAMES = (
 for _name in _TAOTIE_NAMES:
     globals()[_name] = getattr(_root, _name)
 
+# cmd_log lives in taotie.log (extracted from root taotie.py)
+from taotie.log import cmd_log
+globals()['cmd_log'] = cmd_log
+
 # Also expose get_home, _set_home, log_write, log_show from _shared
-from taotie._shared import get_home, _set_home, log_write, log_show
+from taotie._shared import get_home, _set_home, log_write
 globals()['get_home'] = get_home
 globals()['_set_home'] = _set_home
 globals()['log_write'] = log_write
-globals()['log_show'] = log_show
 
 __all__ = ["cmd_scan", "cmd_clean", "cmd_log"]
