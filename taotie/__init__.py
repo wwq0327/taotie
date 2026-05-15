@@ -13,7 +13,7 @@ spec.loader.exec_module(_root)
 # Re-exported items from root taotie.py
 _TAOTIE_NAMES = (
     'fmt_size', 'color_size', 'run', 'du_sort', 'du_total',
-    'print_header', 'print_item', 'LOG_DIR', 'LOG_FILE',
+    'print_header',
     'RED', 'YELLOW', 'GREEN', 'CYAN', 'BOLD', 'RESET',
     '_STRIP_ANSI_RE',
     'cmd_scan', 'cmd_clean',
