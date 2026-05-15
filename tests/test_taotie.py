@@ -9,6 +9,7 @@ from unittest.mock import patch, MagicMock, call
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import taotie
 import taotie._shared as shared
+import taotie._cache as cache
 
 # 预编译正则 (修复后模块级常量)
 _STRIP_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
@@ -29,8 +30,8 @@ def fake_home(tmp_path, monkeypatch):
     (home / "Library" / "Caches").mkdir(parents=True)
     (home / "Library" / "Logs").mkdir(parents=True)
     # 用 _set_home + _reset_path_cache 重置缓存，使后续 classify() 用 fake home
-    taotie._set_home(home)
-    taotie._reset_path_cache()
+    shared._set_home(home)
+    cache._reset_path_cache()
     return home
 
 
@@ -39,23 +40,23 @@ class TestClassify:
 
     def test_uv_cache_is_safe(self, fake_home):
         """~/.cache/uv 归类为 safe."""
-        assert taotie.classify(str(fake_home / ".cache" / "uv"), "") == "safe"
+        assert cache.classify(str(fake_home / ".cache" / "uv"), "") == "safe"
 
     def test_pip_cache_is_safe(self, fake_home):
         """~/.cache/pip 归类为 safe."""
-        assert taotie.classify(str(fake_home / ".cache" / "pip"), "") == "safe"
+        assert cache.classify(str(fake_home / ".cache" / "pip"), "") == "safe"
 
     def test_whisper_cache_is_medium(self, fake_home):
         """~/.cache/whisper 归类为 medium."""
-        assert taotie.classify(str(fake_home / ".cache" / "whisper"), "") == "medium"
+        assert cache.classify(str(fake_home / ".cache" / "whisper"), "") == "medium"
 
     def test_huggingface_cache_is_medium(self, fake_home):
         """~/.cache/huggingface 归类为 medium."""
-        assert taotie.classify(str(fake_home / ".cache" / "huggingface"), "") == "medium"
+        assert cache.classify(str(fake_home / ".cache" / "huggingface"), "") == "medium"
 
     def test_generic_cache_is_medium(self, fake_home):
         """~/.cache/other 归类为 medium (非 uv/pip)."""
-        assert taotie.classify(str(fake_home / ".cache" / "other"), "") == "medium"
+        assert cache.classify(str(fake_home / ".cache" / "other"), "") == "medium"
 
 
 # TestAggressiveLevel removed: the test was broken in original code
@@ -71,7 +72,7 @@ class TestClassifyPerformance:
     def test_classify_does_not_normpath_constants(self):
         """classify 不应在循环内对 SAFE_PATHS/MEDIUM_PATHS 做 normpath."""
         import inspect
-        source = inspect.getsource(taotie.classify)
+        source = inspect.getsource(cache.classify)
         # 检查函数体内是否有对常量的 normpath 调用
         assert "normpath(sp)" not in source and "normpath(mp)" not in source, \
             "classify 不应在循环内对 SAFE_PATHS/MEDIUM_PATHS 调用 normpath"
@@ -86,7 +87,7 @@ class TestTablePerformance:
     def test_table_sep_not_defined_inside_function(self):
         """sep 不应在 _table 函数内部定义, 而应在模块级."""
         import inspect
-        source = inspect.getsource(taotie._table)
+        source = inspect.getsource(cache._table)
         assert "def sep" not in source, \
             "_table 函数体内不应定义 sep, 应使用模块级函数"
 
@@ -101,7 +102,7 @@ class TestStripAnsiPerformance:
         """_strip_ansi 不应在函数内 import re, 而应使用模块级预编译正则."""
         # 通过检查函数体内是否有 import 语句来验证
         import inspect
-        source = inspect.getsource(taotie._strip_ansi)
+        source = inspect.getsource(cache._strip_ansi)
         assert "import re" not in source, \
             "_strip_ansi 函数体内不应有 'import re' 语句"
 
@@ -118,9 +119,9 @@ class TestStripAnsiPerformance:
         __builtins__["__import__"] = counting_import
 
         try:
-            taotie._strip_ansi("\033[31mred\033[0m")
-            taotie._strip_ansi("\033[32mgreen\033[0m")
-            taotie._strip_ansi("\033[33myellow\033[0m")
+            cache._strip_ansi("\033[31mred\033[0m")
+            cache._strip_ansi("\033[32mgreen\033[0m")
+            cache._strip_ansi("\033[33myellow\033[0m")
             assert import_count[0] == 0, \
                 f"_strip_ansi 调用了 import re {import_count[0]} 次, 应为 0 次"
         finally:
