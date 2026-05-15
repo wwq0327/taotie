@@ -18,6 +18,7 @@ GREEN = "\033[32m"
 CYAN = "\033[36m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
+DIM = "\033[2m"
 
 _STRIP_ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 
@@ -198,3 +199,17 @@ def log_show(n=30):
         entries.append(current)
     for e in entries[-n:]:
         print(e + "\n")
+
+
+def print_summary(output: dict) -> None:
+    """打印汇总（C 模式：非 JSON）"""
+    total = output["total_bytes"]
+    print_header("汇总")
+    for lv in ("safe", "medium", "manual"):
+        info = output["levels"][lv]
+        if info["bytes"] == 0:
+            continue
+        color = {"safe": GREEN, "medium": YELLOW, "manual": RED}[lv]
+        print(f"  {color}{BOLD}{info['label']}{RESET}  ({fmt_size(info['bytes'])})")
+    print(f"\n  {BOLD}总计: {fmt_size(total)}{RESET}")
+    print(f"\n  {DIM}scan · clean · log · help{RESET}")

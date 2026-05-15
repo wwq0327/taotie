@@ -193,3 +193,28 @@ class TestClean:
         from taotie.clean import collect_dir
         items = collect_dir(str(fake_home / "nonexistent"))
         assert items == []
+
+
+class TestPrintSummary:
+    def test_print_summary_runs_without_error(self, fake_home, capsys):
+        """print_summary 接受正确结构的 dict 并打印，不抛异常"""
+        from taotie._shared import print_summary
+        output = {
+            "total": "1.0G",
+            "total_bytes": 1024**3,
+            "levels": {
+                "safe":   {"bytes": 500*1024**2, "label": "safe 级可清理"},
+                "medium": {"bytes": 300*1024**2, "label": "medium 级可清理"},
+                "manual": {"bytes": 200*1024**2, "label": "需手动判断"},
+            },
+            "items_by_level": {
+                "safe":   [{"path": "~/.cache/uv", "bytes": 500*1024**2}],
+                "medium": [{"path": "~/.cache/whisper", "bytes": 300*1024**2}],
+                "manual": [],
+            },
+        }
+        print_summary(output)
+        captured = capsys.readouterr().out
+        assert "总计" in captured
+        assert "1.0G" in captured
+        assert "safe" in captured
