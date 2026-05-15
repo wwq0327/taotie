@@ -75,7 +75,8 @@ def _print_dir_table(title, items, total):
 
 
 def cmd_scan(json_output=False):
-    scan_overview()
+    if not json_output:
+        scan_overview()
 
     scans = [
         ("废纸篓", get_home() / ".Trash", 2, 10),
@@ -106,13 +107,19 @@ def cmd_scan(json_output=False):
             pbar.set_postfix_str(f"{title} {fmt_size(total)}")
         pbar.close()
 
-    # 按原始顺序打印详细表格
-    print()
-    all_items = []
-    for title, _, _, _ in scans:
-        items, total = results.get(title, ([], 0))
-        _print_dir_table(title, items, total)
-        all_items.extend(items)
+    # 按原始顺序打印详细表格（JSON 模式跳过）
+    if not json_output:
+        print()
+        all_items = []
+        for title, _, _, _ in scans:
+            items, total = results.get(title, ([], 0))
+            _print_dir_table(title, items, total)
+            all_items.extend(items)
+    else:
+        all_items = []
+        for title, _, _, _ in scans:
+            items, total = results.get(title, ([], 0))
+            all_items.extend(items)
 
     # ── 汇总 ──
     level_labels = [("safe", "safe 级可清理"), ("medium", "medium 级可清理"), ("manual", "需手动判断")]
