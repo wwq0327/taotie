@@ -218,3 +218,36 @@ class TestPrintSummary:
         assert "总计" in captured
         assert "1.0G" in captured
         assert "safe" in captured
+
+
+class TestScanJson:
+    def test_scan_json_output_is_valid_json(self, fake_home, monkeypatch, capsys):
+        """cmd_scan(json_output=True) 输出有效 JSON"""
+        import taotie.scan as scan_mod
+        import json
+
+        # Mock du_total to return non-zero so grand_total > 0
+        # du_sort returns empty to avoid complex classification logic
+        # grand_total will be 0 -> early return with log_write, but JSON not printed
+        # So we need du_sort to return non-empty; use a cache path for safe classification
+        def mock_du_sort(path, depth, n):
+            return [(str(path) + "/.cache/uv", 1024)]
+
+        monkeypatch.setattr(scan_mod, 'du_total', lambda p: 1024)
+        monkeypatch.setattr(scan_mod, 'du_sort', mock_du_sort)
+        # Suppress scan_overview by replacing in taotie._shared.run
+        # so df/tmutil commands don't produce unwanted output
+        monkeypatch.setattr(scan_mod, 'run', lambda cmd: [])
+
+        scan_mod.cmd_scan(json_output=True)
+        captured = capsys.readouterr().out
+
+        # JSON appears after table output; find where it starts
+        json_start = captured.find('{')
+        assert json_start != -1, f"No JSON object found in output: {captured[:200]}"
+        data = json.loads(captured[json_start:])
+        assert "total" in data
+        assert "levels" in data
+        assert "items_by_level" in data
+        # safe bytes should be > 0 since du_sort returns non-empty
+        assert data["levels"]["safe"]["bytes"] > 0

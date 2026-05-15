@@ -5,9 +5,11 @@ import os
 
 from tqdm import tqdm
 
+import json
+
 from taotie._shared import (
     fmt_size, color_size, run, du_sort, du_total,
-    print_header, get_home,
+    print_header, get_home, print_summary,
     RED, YELLOW, GREEN, CYAN, BOLD, RESET,
 )
 from taotie._cache import classify, _table
@@ -72,7 +74,7 @@ def _print_dir_table(title, items, total):
     print(_table(table_rows, col_w, ["Level", "Size", "Path"]))
 
 
-def cmd_scan():
+def cmd_scan(json_output=False):
     scan_overview()
 
     scans = [
@@ -113,8 +115,6 @@ def cmd_scan():
         all_items.extend(items)
 
     # ── 汇总 ──
-    print_header("汇总")
-    level_color = {"safe": GREEN, "medium": YELLOW, "manual": RED}
     level_labels = [("safe", "safe 级可清理"), ("medium", "medium 级可清理"), ("manual", "需手动判断")]
 
     # 收集每个等级的项目（按大小降序）
@@ -124,45 +124,33 @@ def cmd_scan():
         items.sort(key=lambda x: x[1], reverse=True)
         lv_groups[lv] = items
 
-    # 对齐行数
-    max_rows = min(max(len(v) for v in lv_groups.values()), 15)
-    if max_rows == 0:
-        print("  无数据\n")
+    grand_total = sum(sum(s for _, s in items) for items in lv_groups.values())
+
+    if grand_total == 0:
+        if not json_output:
+            print_header("汇总")
+            print("  无数据\n")
+        log_write("SCAN", "磁盘诊断", f"总计 {fmt_size(grand_total)}")
         return
 
-    # 计算列宽（Path 列统一宽度）
-    path_w = 40
-    for items in lv_groups.values():
-        for d, _ in items[:max_rows]:
-            path_w = max(path_w, len(d))
-    path_w = min(path_w, 55)
-    col_w = [10, path_w]
+    # 构建输出结构
+    output = {
+        "total": fmt_size(grand_total),
+        "total_bytes": grand_total,
+        "levels": {
+            lv: {"bytes": sum(s for _, s in lv_groups[lv]), "label": label}
+            for lv, label in level_labels
+        },
+        "items_by_level": {
+            lv: [{"path": d, "bytes": s} for d, s in items]
+            for lv, items in lv_groups.items()
+        },
+    }
 
-    grand_total = 0
-    for lv, label in level_labels:
-        items = lv_groups[lv]
-        total = sum(s for _, s in items)
-        grand_total += total
-        lc = level_color[lv]
-
-        # 表头
-        print(f"\n  {lc}{BOLD}{label}{RESET}  ({fmt_size(total)})")
-        if not items:
-            print("    (无)")
-            continue
-
-        # 数据行（按大小降序，补齐到 max_rows）
-        table_rows = []
-        for i in range(max_rows):
-            if i < len(items):
-                d, s = items[i]
-                table_rows.append([color_size(s), d])
-            else:
-                table_rows.append(["", ""])
-
-        print(_table(table_rows, col_w, ["Size", "Path"]))
-
-    print(f"\n  {BOLD}总计: {fmt_size(grand_total)}{RESET} (分布: {GREEN}safe{RESET} / {YELLOW}medium{RESET} / {RED}manual{RESET})\n")
+    if json_output:
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+    else:
+        print_summary(output)
 
     # 记日志
     lines = [f"总计 {fmt_size(grand_total)}"]

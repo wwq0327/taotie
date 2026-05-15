@@ -12,7 +12,8 @@ def main():
     parser = argparse.ArgumentParser(description="taotie — 吞磁盘垃圾的饕餮")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("scan", help="诊断磁盘占用")
+    scan_p = sub.add_parser("scan", help="诊断磁盘占用")
+    scan_p.add_argument("--json", action="store_true", help="输出 JSON 格式")
 
     clean_p = sub.add_parser("clean", help="清理磁盘垃圾")
     clean_p.add_argument("--level", choices=["safe", "medium", "aggressive"],
@@ -26,7 +27,7 @@ def main():
     args = parser.parse_args()
 
     if args.cmd == "scan":
-        cmd_scan()
+        cmd_scan(json_output=args.json)
     elif args.cmd == "clean":
         cmd_clean(args.level, args.dry_run)
     elif args.cmd == "log":
