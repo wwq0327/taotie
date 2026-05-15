@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>taotie UI 整合方案</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 18px; font-weight: 600; color: #f0f6fc; margin-bottom: 4px; }
+  p.sub { color: #8b949e; font-size: 12px; margin-bottom: 20px; }
+
+  .section { margin-bottom: 28px; }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8b949e;
+    margin-bottom: 12px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+  .card:hover { border-color: #58a6ff; background: #1f2430; }
+  .card.selected { border-color: #58a6ff; background: #0d1d36; }
+  .card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    color: #58a6ff;
+    font-size: 13px;
+  }
+  .card-letter {
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 4px;
+    margin-right: 6px;
+  }
+  .card-name { font-size: 13px; font-weight: 500; color: #f0f6fc; display: inline; }
+  .card-desc { font-size: 11px; color: #8b949e; margin-top: 4px; margin-left: 26px; }
+  .card-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .tag-dep { background: #23863622; color: #3fb950; border: 1px solid #23863644; }
+  .tag-std { background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb44; }
+  .tag-ui  { background: #a371f722; color: #bc8cff; border: 1px solid #a371f744; }
+
+  .combo-box {
+    background: #0d1117;
+    border: 2px solid #30363d;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+  }
+  .combo-title { font-size: 13px; font-weight: 600; color: #f0f6fc; margin-bottom: 8px; }
+  .combo-desc { font-size: 12px; color: #8b949e; line-height: 1.7; }
+  .combo-tags { margin-top: 10px; }
+  .combo-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 10px;
+    margin-right: 6px;
+  }
+  .ct-a { background: #1f6feb33; color: #58a6ff; }
+  .ct-c { background: #a371f733; color: #bc8cff; }
+  .ct-e { background: #23863633; color: #3fb950; }
+
+  .action {
+    margin-top: 20px;
+    padding: 12px 20px;
+    background: #1f6feb;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    display: inline-block;
+    cursor: pointer;
+  }
+  .action:hover { background: #388bfd; }
+
+  pre.mock {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'SF Mono', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 20px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .t-bold { font-weight: 600; }
+  .t-cyan { color: #58a6ff; }
+  .t-green { color: #3fb950; }
+  .t-yellow { color: #d29922; }
+  .t-red { color: #f85149; }
+  .t-dim { color: #6e7681; }
+</style>
+</head>
+<body>
+<h1>taotie UI 改进方案全览</h1>
+<p class="sub">点击卡片选择感兴趣的方案，底部生成推荐组合</p>
+
+<div class="section">
+<div class="section-title">核心 UI 改进（选 1 个）</div>
+<div class="grid">
+  <div class="card" data-tags="a,std" onclick="toggle(this)">
+    <span class="card-letter" style="background:#1f6feb22;color:#58a6ff">A</span>
+    <span class="card-name">文本格式优化</span>
+    <span class="card-tag tag-std">零依赖</span>
+    <div class="card-desc">进度条更清晰、表格更紧凑、颜色分层</div>
+  </div>
+  <div class="card" data-tags="b,std" onclick="toggle(this)">
+    <span class="card-letter" style="background:#23863622;color:#3fb950">B</span>
+    <span class="card-name">确认交互改进</span>
+    <span class="card-tag tag-std">零依赖</span>
+    <div class="card-desc">方向键选择「是/否删除」，Tab 切换</div>
+  </div>
+  <div class="card selected" data-tags="c,std" onclick="toggle(this)">
+    <span class="card-letter" style="background:#a371f722;color:#bc8cff">C</span>
+    <span class="card-name">整体 Terminal UI</span>
+    <span class="card-tag tag-std">零依赖</span>
+    <div class="card-desc">原地刷新进度条、底部命令条、q 退出提示</div>
+  </div>
+  <div class="card" data-tags="d,dep" onclick="toggle(this)">
+    <span class="card-letter" style="background:#f0883e22;color:#ffa657">D</span>
+    <span class="card-name">TUI 交互模式</span>
+    <span class="card-tag tag-dep">需 Rich 库</span>
+    <div class="card-desc">方向键操作、侧边栏选择、Enter 确认</div>
+  </div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-title">附加功能（可多选）</div>
+<div class="grid">
+  <div class="card selected" data-tags="e,std" onclick="toggle(this)">
+    <span class="card-letter" style="background:#23863622;color:#3fb950">E</span>
+    <span class="card-name">JSON 输出模式</span>
+    <span class="card-tag tag-std">零依赖</span>
+    <div class="card-desc">taotie scan --json，方便脚本调用</div>
+  </div>
+  <div class="card" data-tags="f,std" onclick="toggle(this)">
+    <span class="card-letter" style="background:#1f6feb22;color:#58a6ff">F</span>
+    <span class="card-name">分页查看</span>
+    <span class="card-tag tag-std">零依赖</span>
+    <div class="card-desc">大列表支持 less / q 退出 / / 搜索</div>
+  </div>
+  <div class="card selected" data-tags="h,std" onclick="toggle(this)">
+    <span class="card-letter" style="background:#a371f722;color:#bc8cff">H</span>
+    <span class="card-name">静默 + 通知</span>
+    <span class="card-tag tag-std">零依赖</span>
+    <div class="card-desc">clean --quiet 完成后发 macOS 通知</div>
+  </div>
+  <div class="card" data-tags="i,dep" onclick="toggle(this)">
+    <span class="card-letter" style="background:#f0883e22;color:#ffa657">I</span>
+    <span class="card-name">tqdm 进度条</span>
+    <span class="card-tag tag-dep">需 tqdm</span>
+    <div class="card-desc">用 tqdm 库替代手写原地刷新，跨终端兼容</div>
+  </div>
+  <div class="card" data-tags="g,std" onclick="toggle(this)">
+    <span class="card-letter" style="background:#1f6feb22;color:#58a6ff">G</span>
+    <span class="card-name">清理前后对比</span>
+    <span class="card-tag tag-std">零依赖</span>
+    <div class="card-desc">clean 后报告回收量 + 节省百分比</div>
+  </div>
+</div>
+</div>
+
+<!-- 推荐组合 -->
+<div class="combo-box">
+  <div class="combo-title">推荐组合：「C + E + H」</div>
+  <div class="combo-desc">
+    最实用的三合一方案：<br>
+    <b>C</b> — 原地刷新进度条，scan 时实时显示扫描进度和状态<br>
+    <b>E</b> — <code>--json</code> 输出，方便 pipeline 和脚本调用<br>
+    <b>H</b> — <code>--quiet</code> 静默模式，完成后发 macOS 通知<br><br>
+    零新依赖，零破坏性改动，完全向后兼容。
+  </div>
+  <div class="combo-tags">
+    <span class="combo-tag ct-c">C</span>
+    <span class="combo-tag ct-e">E</span>
+    <span class="combo-tag ct-c">H</span>
+  </div>
+
+<pre class="mock"><span class="t-bold t-cyan">taotie</span> <span class="t-dim">v1.0</span>  吞磁盘垃圾的饕餮
+
+<span class="t-bold">诊断磁盘占用</span>
+  <span class="t-green">✓</span> 废纸篓          64B
+  <span class="t-yellow">◐</span> ~/Library/Caches  扫描中...  <span class="t-dim">Ctrl+C 退出</span>
+
+<span class="t-bold">清理建议</span>
+  <span class="t-green">●</span> safe 级   2.1G   <span class="t-dim">可直接清理</span>
+  <span class="t-yellow">●</span> medium 级 5.8G   <span class="t-dim">含模型缓存</span>
+  <span class="t-red">●</span> manual 级 38.2G  <span class="t-dim">需人工判断</span>
+
+<span class="t-dim">──────</span>
+  scan · clean · log · help · <span class="t-yellow">q 退出</span>
+
+<span class="t-dim">─── JSON 输出 ───</span>
+{ "total": "46.1G", "safe": "2.1G", "medium": "5.8G", "manual": "38.2G", "items": [...] }
+
+<span class="t-dim">─── 静默模式 + 通知 ───</span>
+$ <span class="t-dim">taotie clean --level medium --quiet</span>
+<span class="t-dim">（无输出，结束后弹窗：「清理完成，回收 5.8G」）</span></pre>
+</div>
+
+<script>
+  function toggle(el) {
+    el.classList.toggle('selected');
+  }
+</script>
+</body>
+</html>

@@ -3,6 +3,8 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 
+from tqdm import tqdm
+
 from taotie._shared import (
     fmt_size, color_size, run, du_sort, du_total,
     print_header, get_home,
@@ -90,17 +92,17 @@ def cmd_scan():
     ]
 
     # 并行收集数据
-    total_scans = len(scans)
     results = {}
-    print(f"\n  {CYAN}扫描中…{RESET}")
     with ThreadPoolExecutor(max_workers=12) as ex:
         futures = {ex.submit(_collect_items, t, p, d, n): t for t, p, d, n in scans}
+        pbar = tqdm(total=len(scans), desc="扫描中", unit="项",
+                    bar_format="{l_bar}{bar}| {n}/{total}")
         for f in as_completed(futures):
             title, items, total = f.result()
             results[title] = (items, total)
-            n = len(results)
-            bar = "▓" * (n * 20 // total_scans) + "░" * (20 - n * 20 // total_scans)
-            print(f"  {bar}  [{n}/{total_scans}]  {title}  {color_size(total)}")
+            pbar.update(1)
+            pbar.set_postfix_str(f"{title} {fmt_size(total)}")
+        pbar.close()
 
     # 按原始顺序打印详细表格
     print()

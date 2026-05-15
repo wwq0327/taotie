@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>taotie UI 方案对比</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #f0f6fc;
+  }
+  p.subtitle {
+    color: #8b949e;
+    margin-bottom: 24px;
+    font-size: 13px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .badge-a { background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb44; }
+  .badge-b { background: #23863622; color: #3fb950; border: 1px solid #23863644; }
+  .badge-c { background: #a371f722; color: #bc8cff; border: 1px solid #a371f744; }
+  .badge-d { background: #f0883e22; color: #ffa657; border: 1px solid #f0883e44; }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #f0f6fc;
+  }
+  .panel-desc {
+    font-size: 11px;
+    color: #8b949e;
+    margin-left: auto;
+  }
+
+  .terminal {
+    background: #0d1117;
+    padding: 12px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    min-height: 280px;
+    overflow: hidden;
+  }
+
+  .t-line { white-space: pre; }
+  .t-dim { color: #484f58; }
+  .t-green { color: #3fb950; }
+  .t-yellow { color: #d29922; }
+  .t-red { color: #f85149; }
+  .t-cyan { color: #58a6ff; }
+  .t-bold { font-weight: 600; }
+  .t-muted { color: #6e7681; }
+
+  .progress-bar { color: #8b949e; }
+  .bar-filled { color: #1f6feb; }
+  .bar-empty { color: #21262d; }
+
+  .tui-header {
+    background: #161b22;
+    padding: 8px 12px;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -12px -12px 12px -12px;
+  }
+  .tui-title { color: #f0f6fc; font-size: 12px; font-weight: 600; }
+  .tui-tabs { display: flex; gap: 4px; }
+  .tui-tab { padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #8b949e; cursor: pointer; }
+  .tui-tab.active { background: #1f6feb; color: #fff; }
+  .tui-body { display: flex; gap: 12px; }
+  .tui-sidebar { width: 120px; }
+  .tui-item { padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; margin-bottom: 2px; }
+  .tui-item:hover { background: #1f6feb22; }
+  .tui-item.selected { background: #1f6feb44; color: #58a6ff; border-left: 2px solid #1f6feb; }
+  .tui-item.safe { color: #3fb950; }
+  .tui-item.medium { color: #d29922; }
+  .tui-item.manual { color: #f85149; }
+  .tui-main { flex: 1; }
+  .tui-detail { color: #8b949e; font-size: 11px; line-height: 1.8; }
+  .tui-detail strong { color: #f0f6fc; }
+  .tui-detail .highlight { color: #ffa657; }
+  .tui-footer {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #30363d;
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .tui-btn { padding: 4px 12px; border-radius: 4px; cursor: pointer; }
+  .tui-btn-primary { background: #f85149; color: #fff; }
+  .tui-btn-secondary { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+
+  .confirm-box {
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 8px;
+  }
+  .confirm-question { color: #f0f6fc; margin-bottom: 8px; font-size: 12px; }
+  .confirm-arrow { color: #58a6ff; margin-right: 6px; }
+  .confirm-options { display: flex; gap: 8px; margin-top: 8px; }
+  .confirm-opt { padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .confirm-opt.selected { background: #238636; color: #fff; }
+  .confirm-opt.n { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+</style>
+</head>
+<body>
+<h1>taotie UI 改进方案对比</h1>
+<p class="subtitle">选择你最感兴趣的方案，复制提示词开始实现</p>
+
+<div class="grid">
+
+  <!-- A: Scan 输出优化 -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-badge badge-a">A</span>
+      <span class="panel-title">Scan 输出格式优化</span>
+      <span class="panel-desc">纯文本改进，无需新依赖</span>
+    </div>
+    <div class="terminal">
+<span class="t-bold t-cyan">━━━ 磁盘概览 ━━━</span>
+  Filesystem      Size  Used  Avail  Mounted
+  /dev/disk3s1s1  926Gi  12Gi  714Gi  /
+
+<span class="t-bold t-cyan">━━━ 扫描中 ━━━</span>
+<span class="bar-filled">▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░</span>  10/13  ~/Library/Caches   <span class="t-yellow">102.6M</span>
+
+<span class="t-bold t-cyan">━━━ 废纸篓  (64B) ━━━</span>
+<span class="t-green">✔ safe</span>   75.7M   /tmp/ailing-npm-cache
+<span class="t-green">✔ safe</span>    196K   /tmp/claude-501
+<span class="t-green">✔ safe</span>    4.6K   /tmp/all_pages.txt
+
+<span class="t-bold t-cyan">━━━ 汇总 ━━━</span>
+  <span class="t-green">safe</span> 级可清理    <span class="t-yellow">→ 2.1G</span>
+  <span class="t-yellow">medium</span> 级可清理  <span class="t-yellow">→ 5.8G</span>
+  <span class="t-red">manual</span> 需手动判断   <span class="t-red">→ 38.2G</span>
+  <span class="t-bold">总计: 46.1G</span>
+    </div>
+  </div>
+
+  <!-- B: Clean 确认交互 -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-badge badge-b">B</span>
+      <span class="panel-title">Clean 确认交互改进</span>
+      <span class="panel-desc">更明确的选择方式</span>
+    </div>
+    <div class="terminal">
+<span class="t-bold t-cyan">━━━ 清理预览 ━━━</span>
+
+  清理等级: <span class="t-yellow">medium</span>
+  可回收空间: <span class="t-red">46.1G</span>
+
+  ┌──────────────────────┬──────────┐
+  │ 废纸篓               │  64.0B   │
+  │ ~/Library/Caches     │  102.6M  │
+  │ ~/.cache/uv          │  800.7M  │
+  │ ~/.cache/whisper     │  1.2G    │
+  │ ~/.npm/_logs (>=7天) │  45.2M   │
+  └──────────────────────┴──────────┘
+
+<div class="confirm-box">
+<div class="confirm-question"><span class="confirm-arrow">→</span>确认删除以上内容？</div>
+<div class="confirm-options">
+  <span class="confirm-opt selected">✓ 是，删除</span>
+  <span class="confirm-opt n">✕ 否，取消</span>
+</div>
+</div>
+
+<span class="t-dim">[ 使用 ↑↓ 选择，Enter 确认 ]</span>
+    </div>
+  </div>
+
+  <!-- C: 整体 Terminal UI -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-badge badge-c">C</span>
+      <span class="panel-title">整体 Terminal UI 体验</span>
+      <span class="panel-desc">spinners / 加载状态 / q退出</span>
+    </div>
+    <div class="terminal">
+<span class="t-bold t-cyan">taotie</span> <span class="t-dim">v1.0</span>
+
+<span class="t-bold">诊断磁盘占用</span>
+  <span class="t-green">✓</span> 废纸篓      64B
+  <span class="t-yellow">◐</span> ~/Library/Caches  扫描中...  <span class="t-dim">Ctrl+C 退出</span>
+
+<span class="t-bold">清理建议</span>
+  <span class="t-green">●</span> safe 级   2.1G   <span class="t-dim">可直接清理</span>
+  <span class="t-yellow">●</span> medium 级 5.8G   <span class="t-dim">含模型缓存</span>
+  <span class="t-red">●</span> manual 级 38.2G  <span class="t-dim">需人工判断</span>
+
+<span class="t-dim">──────</span>
+  scan · clean · log · help · <span class="t-yellow">q 退出</span>
+    </div>
+  </div>
+
+  <!-- D: TUI 交互模式 -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-badge badge-d">D</span>
+      <span class="panel-title">TUI 交互模式</span>
+      <span class="panel-desc">Rich/Textual 库，方向键操作</span>
+    </div>
+    <div class="terminal" style="min-height:320px">
+<div class="tui-header">
+  <span class="tui-title">🍜 taotie</span>
+  <div class="tui-tabs">
+    <span class="tui-tab active">scan</span>
+    <span class="tui-tab">clean</span>
+    <span class="tui-tab">log</span>
+  </div>
+</div>
+<div class="tui-body">
+  <div class="tui-sidebar">
+    <div class="tui-item safe selected">✓ safe  2.1G</div>
+    <div class="tui-item medium">⚡ medium 5.8G</div>
+    <div class="tui-item manual">⚠ manual 38.2G</div>
+  </div>
+  <div class="tui-main">
+    <div class="tui-detail">
+      <strong>safe 级可清理项目</strong><br>
+      <span class="highlight">✔</span> 废纸篓 ........................ 64B<br>
+      <span class="highlight">✔</span> ~/Library/Caches ............. 102.6M<br>
+      <span class="highlight">✔</span> ~/.cache/uv ................... 800.7M<br>
+      <span class="highlight">✔</span> /tmp (过期文件) .............. 74.5M<br>
+    </div>
+    <div class="tui-footer">
+      <span class="tui-btn tui-btn-primary">清理选中</span>
+      <span class="tui-btn tui-btn-secondary">全选 safe</span>
+    </div>
+  </div>
+</div>
+<span class="t-dim" style="margin-top:8px;display:block">↑↓ 选择类别  ←→ 切换视图  q 退出  Enter 清理</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // No interactivity needed for this comparison view
+</script>
+</body>
+</html>
