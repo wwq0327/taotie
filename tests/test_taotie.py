@@ -126,3 +126,70 @@ class TestStripAnsiPerformance:
                 f"_strip_ansi 调用了 import re {import_count[0]} 次, 应为 0 次"
         finally:
             __builtins__["__import__"] = original_import
+
+
+class TestShared:
+    """Tests for shared utilities."""
+
+    def test_fmt_size_bytes(self):
+        """fmt_size formats bytes correctly."""
+        from taotie._shared import fmt_size
+        assert fmt_size(500) == "500.0B"
+        assert fmt_size(1024) == "1.0K"
+        assert fmt_size(1024**2) == "1.0M"
+        assert fmt_size(1024**3) == "1.0G"
+
+    def test_color_size_threshold(self):
+        """color_size applies correct colors at thresholds."""
+        from taotie._shared import color_size, RED, YELLOW, RESET
+        # < 1GB: no color
+        result = color_size(500 * 1024**2)
+        assert RED not in result and YELLOW not in result
+        # >= 1GB: yellow
+        result = color_size(1 * 1024**3)
+        assert YELLOW in result
+        # >= 10GB: red
+        result = color_size(10 * 1024**3)
+        assert RED in result
+
+    def test_get_home_returns_path(self):
+        """get_home returns a Path object."""
+        from taotie._shared import get_home
+        from pathlib import Path
+        home = get_home()
+        assert isinstance(home, Path)
+
+
+class TestNpmCache:
+    """Tests for npm cache handling."""
+
+    def test_npm_logs_classified_manual(self, fake_home):
+        """~/.npm/_logs falls through to manual classification (not in safe/medium lists)."""
+        npm_logs = fake_home / ".npm" / "_logs"
+        npm_logs.mkdir(parents=True)
+        # classify does not have npm-specific logic; falls through to "manual"
+        assert cache.classify(str(npm_logs), "") == "manual"
+
+    def test_npm_error_log_path_under_home(self, fake_home):
+        """npm error logs path resolves under get_home() / '.npm' / '_logs'."""
+        from taotie._shared import get_home
+        npm_logs = fake_home / ".npm" / "_logs"
+        # fake_home fixture already called shared._set_home + cache._reset_path_cache
+        assert (get_home() / ".npm" / "_logs") == npm_logs
+
+
+class TestClean:
+    """Tests for clean command."""
+
+    def test_collect_dir_returns_list(self, fake_home):
+        """collect_dir returns a list of (path, size) tuples."""
+        from taotie.clean import collect_dir
+        (fake_home / "subdir").mkdir()
+        items = collect_dir(str(fake_home / "subdir"))
+        assert isinstance(items, list)
+
+    def test_collect_dir_nonexistent_returns_empty(self, fake_home):
+        """collect_dir returns [] for nonexistent directory."""
+        from taotie.clean import collect_dir
+        items = collect_dir(str(fake_home / "nonexistent"))
+        assert items == []
